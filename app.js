@@ -19,10 +19,9 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const User = require('./models/user.js'); 
 const userRouter = require('./routes/user.js');  
-const WrapAsync = require('./utils/WrapAsync.js'); 
+// const WrapAsync = require('./utils/WrapAsync.js'); 
 
 const dbUrl = process.env.ATLASDB_URL;
-
 
 main().then(() => {
     console.log('Database connected');
