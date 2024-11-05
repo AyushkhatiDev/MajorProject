@@ -4,5 +4,3 @@ module.exports = (fn) => {
   };
 }
 
-
-// allah hu akbar
