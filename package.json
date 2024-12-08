@@ -10,11 +10,12 @@
     "server": "nodemon server.js",
     "client": "npm start --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "build": "cd client && npm install && npm run build",
-    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client",
-    "render-postbuild": "NPM_CONFIG_PRODUCTION=false cd client && npm install && npm run build",
-    "deploy": "npm install && npm run render-postbuild && npm start",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "install-client": "cd client && npm install",
+    "build-client": "cd client && npm run build",
+    "build": "npm install && npm run install-client && npm run build-client",
+    "render-build": "npm run build",
+    "render-start": "npm start",
+    "deploy": "npm run build && npm start"
   },
   "keywords": [],
   "author": "",
