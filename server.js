@@ -17,7 +17,7 @@ app.use(cors({
 
 // Import routes
 const authRoutes = require('./routes/auth');
-const listingRoutes = require('./routes/listings');
+const listingRoutes = require('./routes/listing');
 const userRoutes = require('./routes/users');
 const uploadRoutes = require('./routes/upload');
 
@@ -32,14 +32,31 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/property-
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 
-// Serve static files from the React app
+// Serve static files and handle React routing in production
 if (process.env.NODE_ENV === 'production') {
-    // Serve any static files
-    app.use(express.static(path.join(__dirname, 'client/build')));
+    // Set static folder
+    const buildPath = path.join(__dirname, './client/build');
     
-    // Handle React routing, return all requests to React app
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
+    // Verify if build directory exists
+    const fs = require('fs');
+    if (!fs.existsSync(buildPath)) {
+        console.error('Build directory not found:', buildPath);
+        fs.mkdirSync(buildPath, { recursive: true });
+    }
+    
+    app.use(express.static(buildPath));
+    
+    app.get('*', (req, res, next) => {
+        // Check if the request is for an API route
+        if (req.url.startsWith('/api/')) {
+            return next();
+        }
+        res.sendFile(path.join(buildPath, 'index.html'), (err) => {
+            if (err) {
+                console.error('Error sending file:', err);
+                res.status(500).send('Error loading application');
+            }
+        });
     });
 } else {
     app.get('/', (req, res) => {
@@ -49,6 +66,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Error Handling
 app.use((err, req, res, next) => {
+    console.error('Error:', err);
     const { statusCode = 500, message = "Something went wrong!" } = err;
     res.status(statusCode).json({ error: message });
 });
