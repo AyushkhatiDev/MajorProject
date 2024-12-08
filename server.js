@@ -34,24 +34,30 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/property-
 
 // Serve static files and handle React routing in production
 if (process.env.NODE_ENV === 'production') {
-    // Set build path
-    const buildPath = path.join(__dirname, 'client/build');
-    
+    // Render specific path
+    const buildPath = process.env.RENDER ? '/opt/render/project/src/client/build' : path.join(__dirname, 'client', 'build');
+    console.log('Build path:', buildPath);
+
     // Serve static files
     app.use(express.static(buildPath));
     
     // Handle React routing
     app.get('*', (req, res, next) => {
-        // Skip API routes
         if (req.path.startsWith('/api/')) {
             return next();
         }
-        
+
         const indexPath = path.join(buildPath, 'index.html');
+        console.log('Trying to serve:', indexPath);
+        
         res.sendFile(indexPath, err => {
             if (err) {
                 console.error('Error serving index.html:', err);
-                res.status(500).send('Error loading application');
+                res.status(500).json({
+                    error: 'Error loading application',
+                    details: err.message,
+                    path: indexPath
+                });
             }
         });
     });
@@ -61,7 +67,7 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
     console.error('Error:', err);
     res.status(err.status || 500).json({
@@ -72,4 +78,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+    console.log('Build path:', process.env.RENDER ? '/opt/render/project/src/client/build' : path.join(__dirname, 'client', 'build'));
 });
