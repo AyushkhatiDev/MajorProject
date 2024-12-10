@@ -19,7 +19,8 @@ const LocalStrategy = require('passport-local');
 const User = require('./models/user.js'); 
 const userRouter = require('./routes/user.js');  
 
-const dbUrl = process.env.ATLASDB_URL;
+const dbUrl = process.env.MONGODB_URI || process.env.ATLASDB_URL || 'mongodb://localhost:27017/property-listing';
+const secret = process.env.SECRET || 'mysecret123';
 
 main().then(() => {
     console.log('Database connected');
@@ -45,28 +46,29 @@ app.use(express.static(path.join(__dirname, '/public')));
 const store = MongoStore.create({
     mongoUrl: dbUrl,
     crypto: {
-        secret: process.env.SECRET,
+        secret: secret,
     },
-    TouchAfter: 24 * 3600,
+    touchAfter: 24 * 3600,
 });
 
-store.on("error", () => {
+store.on("error", (err) => {
     console.log("SESSION STORE ERROR", err);
 });
 
-const sessionOptions = {
+const sessionConfig = {
     store,
-    secret: process.env.SECRET,
+    name: 'session',
+    secret,
     resave: false,
     saveUninitialized: true,
     cookie: {
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
         httpOnly: true,
+        expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+        maxAge: 1000 * 60 * 60 * 24 * 7,
     },
 };
 
-app.use(session(sessionOptions));
+app.use(session(sessionConfig));
 app.use(flash());
 
 // Passport Configuration
@@ -76,31 +78,28 @@ passport.use(new LocalStrategy(User.authenticate()));
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
-// API Routes
-app.use('/api/listings', listingRouter);
-app.use('/api/listings/:id/reviews', reviewRouter);
-app.use('/api/users', userRouter);
+app.use((req, res, next) => {
+    res.locals.currentUser = req.user;
+    res.locals.success = req.flash("success");
+    res.locals.error = req.flash("error");
+    next();
+});
 
-// Serve React app in production
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, 'client/build')));
-    
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'client/build/index.html'));
-    });
-}
+app.use("/listings", listingRouter);
+app.use("/listings/:id/reviews", reviewRouter);
+app.use("/", userRouter);
 
-// Error Handling
-app.all('*', (req, res, next) => {
-    next(new ExpressError(404, 'Page Not Found'));
+app.all("*", (req, res, next) => {
+    next(new ExpressError(404, "Page Not Found!"));
 });
 
 app.use((err, req, res, next) => {
     let { statusCode = 500, message = "Something went wrong!" } = err;
     if (!err.message) err.message = 'Oh No, Something Went Wrong!';
-    res.status(statusCode).json({ error: message });
+    res.status(statusCode).render("error.ejs", { message });
 });
 
-app.listen(8080, () => {
-    console.log("Listening on port 8080");
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
