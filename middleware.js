@@ -22,23 +22,19 @@ module.exports.savedRedirectUrl = (req, res, next) => {
 };
 
 // Check if user is the owner of the listing or an admin
-module.exports.isOwner = async (req, res, next) => {
-    const { id } = req.params;
-    const listing = await Listing.findById(id);
-    
-    // Check if the listing exists
-    if (!listing) {
-        req.flash("error", "Listing not found!");
-        return res.redirect("/listings");
-    }
-
-    // Check if the user is the owner or an admin
-    if (!listing.owner.equals(res.locals.currUser._id) && res.locals.currUser.role !== 'admin') {
-        req.flash("error", "You are not the owner of this listing!");
-        return res.redirect(`/listings/${id}`);
-    }
-    
-    next();
+module.exports.isOwner = (req, res, next) => {
+    const { user } = req;
+    Listing.findById(req.params.id)
+        .then(listing => {
+            if (!listing) {
+                return next(new ExpressError('Listing not found', 404));
+            }
+            if (!listing.author.equals(user._id) && !user.isAdmin) {
+                return next(new ExpressError('You do not have permission to do that', 403));
+            }
+            next();
+        })
+        .catch(err => next(err));
 };
 
 // Validate listing data against schema
